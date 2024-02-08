@@ -1,15 +1,14 @@
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from models import db, Usuario, Pets, Veterinarians, Vaccines, Appointment, Prescriptions
-from flask_cors import CORS
-
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mibasededatos.db"
+CORS(app)
 
 db.init_app(app)
 migrate = Migrate(app, db)
-CORS(app)
 
 with app.app_context():
     db.create_all()
@@ -57,13 +56,21 @@ def login():
   user = Usuario.query.filter_by(email=login_email).first()
   if user is not None:
     if user.password == login_password:
-      return f"Login accepted", 201
+      return jsonify("Login accepted"), 200
     else:
-      return f"Invalid email or password", 401
+      return jsonify("Invalid email or password"), 401
   else:
-    return f"Invalid email or password", 401
-
+    return jsonify("Invalid email or password"), 401
+  
+@app.route("/vet", methods=["GET", "POST"])
+def vetFrontView():
+  #add verification
+  rows = db.session.query(Appointment).count()
+  #for 
+  
+  return jsonify("Lorem ipsum")
 
 # this only runs if `$ python src/app.py` is executed
 if __name__ == "__main__":
   app.run(host="localhost", port=5007, debug=True)
+
