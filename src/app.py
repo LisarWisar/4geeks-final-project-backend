@@ -2,14 +2,21 @@ from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from models import db, Usuario, Pets, Veterinarians, Vaccines, Appointment, Prescriptions
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity, jwt_required
+from flask_bcrypt import Bcrypt 
 
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mibasededatos.db"
+app.config["JWT_SECRET_KEY"] = "ULTRA_SECRET_PASSWORD"
+app.config["SECRET_KEY"] = "SECRET_WORD"
 
 db.init_app(app)
-migrate = Migrate(app, db)
 CORS(app)
+migrate = Migrate(app, db)
+jwt = JWTManager(app)
+bcrypt = Bcrypt(app)
+
 
 with app.app_context():
     db.create_all()
@@ -40,7 +47,10 @@ def register():
     usuario.rut = request.json.get("rut")
     usuario.email = request.json.get("email")
     usuario.address = request.json.get("address")
-    usuario.password = request.json.get("password")
+    password = request.json.get("password")
+    #crypt password 
+    passwordHash = bcrypt.generate_password_hash(password)
+    usuario.password = passwordHash
     usuario.phone_number = request.json.get("phone_number")
 
     db.session.add(usuario)
@@ -53,17 +63,28 @@ def register():
 @app.route("/login", methods=["POST"])
 def login():
   login_email = request.json.get("email")
-  login_password = request.json.get("password")
+  password = request.json.get("password")
   user = Usuario.query.filter_by(email=login_email).first()
   if user is not None:
-    if user.password == login_password:
-      return f"Login accepted", 201
-    else:
-      return f"Invalid email or password", 401
+   if bcrypt.check_password_hash(user.password, password):
+    token = create_access_token(identity = login_email)
+   
+    return jsonify({
+      "token": token,
+      "status": "success",
+      "user" : user.serialize_1(),
+      "msg":"Login accepted"
+    }) , 201
+   else:
+    return jsonify({
+     "msg":"Invalid email or password"
+   }), 401
   else:
-    return f"Invalid email or password", 401
-
-
+    return jsonify({
+     "msg":"Invalid email or password"
+   }), 401
+  
+  
 # this only runs if `$ python src/app.py` is executed
 if __name__ == "__main__":
   app.run(host="localhost", port=5007, debug=True)
