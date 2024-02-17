@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
-from models import db, Usuario, Pets, Veterinarians, Vaccines, Appointment, Prescriptions
-from flask_cors import CORS, cross_origin
+from models import db, Users, Pets, Veterinarians, Vaccines, Appointment, Prescriptions
+from flask_cors import CORS
+import datetime
+from datetime import date
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mibasededatos.db"
@@ -16,7 +18,7 @@ with app.app_context():
 #GET METHOD
 @app.route('/', methods=['GET'])
 def home():
-    users = Usuario.query.all()
+    users = Users.query.all()
     users = list(map(lambda user: user.serialize_1(), users))
     
     return jsonify({
@@ -30,8 +32,8 @@ def home():
 def register():
   get_email_from_body = request.json.get("email")
   get_rut_from_body = request.json.get("rut")
-  usuario = Usuario()
-  existing_user = Usuario.query.filter_by(email=get_email_from_body, rut=get_rut_from_body).first()
+  usuario = Users()
+  existing_user = Users.query.filter_by(email=get_email_from_body, rut=get_rut_from_body).first()
   if existing_user is not None:
     return "User already exists"
   else:
@@ -42,9 +44,12 @@ def register():
     usuario.password = request.json.get("password")
     usuario.phone_number = request.json.get("phone_number")
 
-
+    db.session.add(usuario)
+    db.session.commit()
 
   return f"User created", 201
+
+  #return f"User created", 201
 
 #LOGIN POST METHOD
 
@@ -52,7 +57,7 @@ def register():
 def login():
   login_email = request.json.get("email")
   login_password = request.json.get("password")
-  user = Usuario.query.filter_by(email=login_email).first()
+  user = Users.query.filter_by(email=login_email).first()
   if user is not None:
     if user.password == login_password:
       return jsonify("Login accepted"), 200
@@ -80,17 +85,99 @@ def createAppointment():
   return f"Appointment created", 201
 
 @app.route('/vet/calendar', methods=['GET'])
-def getAppointments():
+def getAppointmentsPreview():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize_5(), appointments))
-    #pets = Pets.query_all()
-    #veterinarians = Veterinarians.query.all()
-    #users = Usuario.query.all()
+    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day"]
+    values = []
+    for i in range(len(appointments)):
+      temp_dict = {}
+      temp_values = []
+
+      vet_temp = Veterinarians.query.filter_by(id=appointments[i]["vet_id"]).first()
+      vet = Users.query.filter_by(id=vet_temp.user_id).first()
+      temp_values.append(vet.name)
+
+      temp_values.append(appointments[i]["type_of_visit"])
+
+      pet = Pets.query.filter_by(id=appointments[i]["pet_id"]).first()
+      temp_values.append(pet.species)
+      temp_values.append(pet.breed)
+
+      temp_values.append(appointments[i]["time"]) 
+
+      temp_values.append(appointments[i]["date"])
+      
+      for i in range(len(temp_values)):
+         temp_dict[keys[i]] = temp_values[i]
+         
+      values.append(temp_dict)
 
     return jsonify({
-        "data": appointments,
+        "data": values,
         "status": 'success'
     }),200
+
+
+@app.route('/vet/clinical-record-preview', methods=['GET'])
+def getClinicalRecordsPreview():
+   pet = Pets.query.order_by(Pets.id.desc()).first()
+   owner = Users.query.filter_by(id=pet.user_id).first()
+   pet_sterilized = 0
+   if (pet.sterilized):
+      pet_sterilized = "Sterilized"
+   else:
+      pet_sterilized = "Not sterilized"
+  
+   values = {
+    "name": pet.name,
+    "species": pet.species,
+    "date_of_birth": pet.date_of_birth,
+    "age": pet.age,
+    "color": pet.color,
+    "owner": owner.name,
+    "sterilized": pet_sterilized,
+    "weight": str(pet.weight),
+    "breed": pet.breed,
+    "allergies": pet.allergies,
+    "image": pet.image
+   }
+
+   return jsonify({
+        "data": values,
+        "status": 'success'
+    }),200
+
+@app.route('/vet/clinical-records', methods=['GET'])
+def getClinicalRecords():
+    pets = Pets.query.all()
+    pets = list(map(lambda pet: pet.serialize_2(), pets))
+    keys = ["image", "name", "species", "age", "color", "owner"]
+    values = []
+    for i in range(len(pets)):
+      temp_dict = {}
+      temp_values = []
+
+      temp_values.append(pets[i]["image"])
+      temp_values.append(pets[i]["name"])
+      temp_values.append(pets[i]["species"])
+      temp_values.append(pets[i]["age"])
+      temp_values.append(pets[i]["color"])
+
+      owner = Users.query.filter_by(id=pets[i]["user_id"]).first()
+      temp_values.append(owner.name)
+      
+      for i in range(len(temp_values)):
+         temp_dict[keys[i]] = temp_values[i]
+         
+      values.append(temp_dict)
+
+    return jsonify({
+        "data": values,
+        "status": 'success'
+    }),200
+
+   
 
 #TEST ENDPOINTS BELOW
 
@@ -109,37 +196,6 @@ def getAppointmentsPostman():
         "status": 'success'
     }),200
 
-#@app.route("/vet/calendar", methods=["GET"])
-#def vetFrontView():
-#  #add verification
-#  if request.method =="GET":
-#    rows = Appointment.query.all()
-#    column_keys = Appointment.__table__.columns.keys()
-#    rows_dic_temp = {}
-#    rows_dic = []
-#    for row in rows:
-#      for col in column_keys:
-#          rows_dic_temp[col] = getattr(row, col)
-#      rows_dic.append(rows_dic_temp)
-#      rows_dic_temp= {}
-#    appointments = []
-#
-#    for row in range(len(rows_dic)):
-#      new_appointment = {
-#        "date": rows_dic[row]["date"],
-#        "time": rows_dic[row]["time"],
-#        #"vet_name": db.session.query(Usuario.name).filter_by(id=db.session.query(Veterinarians.user_id).filter_by(id=rows_dic[row]["vet_id"]).first()).first(),
-#        #"user_name": Usuario.query.filter_by(id=1).first()["name"],
-#        "comments": rows_dic[row]["comments"],
-#        "type_of_visit": rows_dic[row]["type_of_visit"],
-#        "payment_status": rows_dic[row]["payment_status"]
-#      }
-#      appointments.append(new_appointment)
-#    numero_test = 1
-#    test = Usuario.query.filter_by(id=numero_test).first()
-#    print("test :", test)
-#  return jsonify(appointments)
-
 @app.route("/postman/create-vet", methods=["POST"])
 def createVetPostman():
   veterinarian = Veterinarians()
@@ -153,6 +209,16 @@ def createVetPostman():
 
   return f"Veterinarian created", 201
 
+@app.route('/postman/consult-veterinarians', methods=['GET'])
+def getVeterinariansPostman():
+    veterinarians = Veterinarians.query.all()
+    veterinarians = list(map(lambda veterinarian: veterinarian.serialize_3(), veterinarians))
+    
+    return jsonify({
+        "data": veterinarians,
+        "status": 'success'
+    }),200
+
 @app.route("/postman/create-pet", methods=["POST"])
 def createPetPostman():
   pet = Pets()
@@ -165,7 +231,7 @@ def createPetPostman():
   pet.age = request.json.get("age")
   pet.color = request.json.get("color")
   pet.sterilized = request.json.get("sterilized")
-  pet.weigth = request.json.get("weigth") #IMPORTANT!! fix weigth spelling on database (also change usuario model to user)
+  pet.weight = request.json.get("weight") #IMPORTANT!! fix weigth spelling on database (also change usuario model to user)
   pet.height = request.json.get("height")
   pet.breed = request.json.get("breed")
   pet.allergies = request.json.get("allergies")
@@ -176,15 +242,15 @@ def createPetPostman():
   db.session.add(pet)
   db.session.commit()
 
-  return f"Veterinarian created", 201
+  return f"Pet created", 201
 
-@app.route('/postman/consult-veterinarians', methods=['GET'])
-def getVeterinariansPostman():
-    veterinarians = Veterinarians.query.all()
-    veterinarians = list(map(lambda veterinarian: veterinarian.serialize_3(), veterinarians))
+@app.route('/postman/consult-pets', methods=['GET'])
+def getPetsPostman():
+    pets = Pets.query.all()
+    pets = list(map(lambda pet: pet.serialize_2(), pets))
     
     return jsonify({
-        "data": veterinarians,
+        "data": pets,
         "status": 'success'
     }),200
 

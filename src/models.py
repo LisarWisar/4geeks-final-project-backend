@@ -2,7 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-class Usuario(db.Model):
+class Users(db.Model):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), nullable=False)
@@ -33,7 +33,7 @@ class Pets(db.Model):
     age = db.Column(db.Integer)
     color = db.Column(db.String(50))
     sterilized = db.Column(db.Boolean)
-    weigth = db.Column(db.Float)
+    weight = db.Column(db.Float)
     height = db.Column(db.Float)
     breed = db.Column(db.String(200))
     allergies = db.Column(db.String(200))
@@ -52,7 +52,7 @@ class Pets(db.Model):
         'age':self.age,
         'color':self.color,
         'sterilized':self.sterilized,
-        'weigth':self.weigth,
+        'weight':self.weight,
         'height':self.height,
         'breed':self.breed,
         'allergies':self.allergies,
