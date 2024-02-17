@@ -1,3 +1,4 @@
+from datetime import timedelta
 from flask import Flask, request, jsonify
 from flask_migrate import Migrate
 from models import db, Usuario, Pets, Veterinarians, Vaccines, Appointment, Prescriptions
@@ -11,6 +12,8 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mibasededatos.db"
 app.config["JWT_SECRET_KEY"] = "ULTRA_SECRET_PASSWORD"
 app.config["SECRET_KEY"] = "SECRET_WORD"
 
+#expires_jwt = timedelta()
+
 db.init_app(app)
 CORS(app)
 migrate = Migrate(app, db)
@@ -23,6 +26,7 @@ with app.app_context():
 
 #GET METHOD
 @app.route('/', methods=['GET'])
+@jwt_required()
 def home():
     users = Usuario.query.all()
     users = list(map(lambda user: user.serialize_1(), users))
@@ -36,27 +40,32 @@ def home():
 
 @app.route("/register", methods=["POST"])
 def register():
-  get_email_from_body = request.json.get("email")
+  get_email_from_body = request.json.get("emailAddress")
   get_rut_from_body = request.json.get("rut")
+  print(get_email_from_body)
   usuario = Usuario()
-  existing_user = Usuario.query.filter_by(email=get_email_from_body, rut=get_rut_from_body).first()
+  existing_user = Usuario.query.filter_by(email=get_email_from_body).first()
   if existing_user is not None:
-    return "User already exists"
+    return jsonify({
+      "msg":"User already exists"
+    })
   else:
     usuario.name = request.json.get("name")
     usuario.rut = request.json.get("rut")
-    usuario.email = request.json.get("email")
+    usuario.email = request.json.get("emailAddress")
     usuario.address = request.json.get("address")
     password = request.json.get("password")
     #crypt password 
     passwordHash = bcrypt.generate_password_hash(password)
     usuario.password = passwordHash
-    usuario.phone_number = request.json.get("phone_number")
+    usuario.phone_number = request.json.get("phone")
 
     db.session.add(usuario)
     db.session.commit()
 
-  return f"User created", 201
+  return jsonify({
+    "msg":"User created"
+  }) , 201
 
 #LOGIN POST METHOD
 
@@ -67,6 +76,7 @@ def login():
   user = Usuario.query.filter_by(email=login_email).first()
   if user is not None:
    if bcrypt.check_password_hash(user.password, password):
+   ## token = create_access_token(identity = login_email, expires_delta = expires_jwt)
     token = create_access_token(identity = login_email)
    
     return jsonify({
