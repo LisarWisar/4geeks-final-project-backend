@@ -98,23 +98,54 @@ def login():
    }), 401
   
   
-@app.route("/vet/calendar/create-appointment", methods=["POST"])
+@app.route("/vet/calendar/create-appointment", methods=["GET", "POST"])
 def createAppointment():
-  appointment = Appointment()
 
-  appointment.date = request.json.get("date")
-  appointment.time = request.json.get("time")
-  appointment.vet_id = request.json.get("vet_id")
-  appointment.user_id = request.json.get("user_id")
-  appointment.pet_id = request.json.get("pet_id")
-  appointment.comments = request.json.get("comments")
-  appointment.type_of_visit = request.json.get("type_of_visit")
-  appointment.payment_status = request.json.get("payment_status")
+  if request.method == "GET":
+     veterinarians_query = Veterinarians.query.all()
+     veterinarians_query = list(map(lambda veterinarian: veterinarian.serialize_3(), veterinarians_query))
+     veterinarians = []
+     for i in range(len(veterinarians_query)):
+        temp_dict = {}
+        temp_dict["vet_id"] = veterinarians_query[i]["vet_id"]
 
-  db.session.add(appointment)
-  db.session.commit()
+        vet_name = Users.query.filter_by(id = veterinarians_query[i]["user_id"]).first()
+        temp_dict["name"] = vet_name.name
 
-  return f"Appointment created", 201
+        veterinarians.append(temp_dict)
+      
+     print("vet: ", veterinarians)
+     pets_query = Pets.query.all()
+     pets_query = list(map(lambda pet: pet.serialize_2(), pets_query))
+     pets = []
+     for i in range(len(pets_query)):
+        temp_dict = {}
+        temp_dict["name"] = pets_query[i]["name"]
+        temp_dict["pet_id"] = pets_query[i]["pet_id"]
+        
+        pets.append(temp_dict)
+
+     return jsonify({
+        "vet_info": veterinarians,
+        "pet_info": pets}
+      ), 200
+
+  elif request.method == "POST":
+    appointment = Appointment()
+
+    appointment.date = request.json.get("date")
+    appointment.time = request.json.get("time")
+    appointment.vet_id = request.json.get("vet_id")
+    appointment.user_id = request.json.get("user_id")
+    appointment.pet_id = request.json.get("pet_id")
+    appointment.comments = request.json.get("comments")
+    appointment.type_of_visit = request.json.get("type_of_visit")
+    appointment.payment_status = request.json.get("payment_status")
+
+    db.session.add(appointment)
+    db.session.commit()
+
+    return f"Appointment created", 201
 
 @app.route('/vet/calendar', methods=['GET'])
 def getAppointmentsPreview():
