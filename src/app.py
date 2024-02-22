@@ -286,6 +286,7 @@ def getUserFrontPageData():
       temp_dict["species"] = pets_query[i]["species"]
       temp_dict["age"] = pets_query[i]["age"]
       temp_dict["pet_id"] = pets_query[i]["pet_id"]
+      temp_dict["image"] = pets_query[i]["image"]
 
       pets.append(temp_dict)
       
@@ -316,7 +317,7 @@ def getUserFrontPageData():
    return jsonify({
       "pets_data": pets,
       "user_data": user_data,
-      "appointment_data": appointments
+      "appointments_data": appointments
    }), 200
 
 #TEST ENDPOINTS BELOW
