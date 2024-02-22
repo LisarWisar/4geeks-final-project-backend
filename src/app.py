@@ -82,7 +82,7 @@ def login():
   if user is not None:
    if bcrypt.check_password_hash(user.password, password):
    ## token = create_access_token(identity = login_email, expires_delta = expires_jwt)
-    token = create_access_token(identity = login_email)
+    token = create_access_token(identity = user.id)
 
     role = ""
     role_auth = Veterinarians.query.filter_by(user_id = user.id).first()
@@ -268,13 +268,15 @@ def createAppointment():
 
 
 @app.route('/user', methods=['GET'])
-@jwt_required
+@jwt_required()
 def getUserFrontPageData():
    
-   current_user_email = get_jwt_identity()
-   user = Users.query.filter_by(email=current_user_email).first()
+   current_user_id = get_jwt_identity()
+   user = Users.query.filter_by(id=current_user_id).first()
    pets_query = Pets.query.filter_by(user_id = user.id)
    pets_query = list(map(lambda pet: pet.serialize(), pets_query))
+   appointments_query = Appointment.query.filter_by(user_id = user.id)
+   appointments_query = list(map(lambda appointment: appointment.serialize(), appointments_query))
    
    pets = []
    for i in range(len(pets_query)):
@@ -286,10 +288,36 @@ def getUserFrontPageData():
       temp_dict["pet_id"] = pets_query[i]["pet_id"]
 
       pets.append(temp_dict)
+      
+   user_data = {}
+   user_data["id"] = user.id
+   user_data["name"] = user.name  
 
-  
-   print("pets", pets)
-   return(), 200
+   appointments = []
+   for i in range(len(appointments_query)):
+      temp_dict = {}
+
+      temp_dict["date"] = appointments_query[i]["date"] 
+      temp_dict["time"] = appointments_query[i]["time"]
+
+      temp_vet = Veterinarians.query.filter_by(id=appointments_query[i]["vet_id"]).first()
+      temp_user = Users.query.filter_by(id=temp_vet.user_id).first()
+      temp_dict["veterinarian"] = temp_user.name
+
+      temp_dict["type_of_visit"] = appointments_query[i]["type_of_visit"]
+
+      temp_pet = Pets.query.filter_by(id = appointments_query[i]["pet_id"]).first()
+      temp_dict["species"] = temp_pet.species
+      temp_dict["pet_name"] = temp_pet.name
+
+      appointments.append(temp_dict)
+
+
+   return jsonify({
+      "pets_data": pets,
+      "user_data": user_data,
+      "appointment_data": appointments
+   }), 200
 
 #TEST ENDPOINTS BELOW
 
