@@ -113,7 +113,7 @@ def login():
 def getAppointmentsPreview():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize_5(), appointments))
-    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day"]
+    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day", "appointment_id"]
     values = []
     for i in range(len(appointments)):
       temp_dict = {}
@@ -132,6 +132,8 @@ def getAppointmentsPreview():
       temp_values.append(appointments[i]["time"]) 
 
       temp_values.append(appointments[i]["date"])
+
+      temp_values.append(appointments[i]["appointment_id"])
       
       for i in range(len(temp_values)):
          temp_dict[keys[i]] = temp_values[i]
@@ -263,6 +265,32 @@ def createAppointment():
     db.session.commit()
 
     return f"Appointment created", 201
+
+
+@app.route('/user', methods=['GET'])
+@jwt_required
+def getUserFrontPageData():
+   
+   current_user_email = get_jwt_identity()
+   user = Users.query.filter_by(email=current_user_email).first()
+   pets_query = Pets.query.filter_by(user_id = user.id)
+   pets_query = list(map(lambda pet: pet.serialize_2(), pets_query))
+   
+   keys = ["name", "species", "age", "id"]
+   pets = []
+   for i in range(len(pets_query)):
+      temp_dict = {}
+
+      temp_dict["name"] = pets_query[i]["name"]
+      temp_dict["species"] = pets_query[i]["species"]
+      temp_dict["age"] = pets_query[i]["age"]
+      temp_dict["pet_id"] = pets_query[i]["pet_id"]
+
+      pets.append(temp_dict)
+
+  
+   print("pets", pets)
+   return(), 200
 
 #TEST ENDPOINTS BELOW
 
