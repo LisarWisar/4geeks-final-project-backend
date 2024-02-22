@@ -211,7 +211,7 @@ def getClinicalRecords():
 def getClinicalRecordsSpecific(id):
   pet_specific = Pets.query.filter_by(id=id).first()
   if pet_specific is not None:
-     return jsonify({pet_specific.serialize_2()}),200
+     return jsonify(pet_specific.serialize_2()),200
   else:
      return jsonify({"error":"pet no found"}),404
 
