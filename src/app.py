@@ -204,6 +204,19 @@ def getClinicalRecords():
         "status": 'success'
     }),200
 
+
+#CLINICAL RECORDS SPECIFIC
+
+@app.route('/vet/clinical-records-specific/<int:id>', methods = ["GET"])
+def getClinicalRecordsSpecific(id):
+  pet_specific = Pets.query.filter_by(id=id).first()
+  if pet_specific is not None:
+     return jsonify({pet_specific.serialize_2()}),200
+  else:
+     return jsonify({"error":"pet no found"}),404
+
+
+
 @app.route("/vet/calendar/create-appointment", methods=["GET", "POST"])
 def createAppointment():
 
@@ -280,8 +293,6 @@ def getUserFrontPageData():
    return(), 200
 
 #TEST ENDPOINTS BELOW
-
-
 
 @app.route('/postman/calendar', methods=['GET'])
 def getAppointmentsPostman():
