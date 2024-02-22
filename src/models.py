@@ -12,7 +12,7 @@ class Users(db.Model):
     address = db.Column(db.String(50), nullable=False)
     phone_number = db.Column(db.String(50), nullable=False)
 
-    def serialize_1(self):
+    def serialize(self):
         return {
         'user_id': self.id,
         'name': self.name,
@@ -41,7 +41,7 @@ class Pets(db.Model):
     doctor_notes = db.Column(db.String(200))
     status = db.Column(db.Boolean)
 
-    def serialize_2(self):
+    def serialize(self):
         return {
         'pet_id':self.id,
         'user_id':self.user_id,
@@ -68,7 +68,7 @@ class Veterinarians(db.Model):
     specialty = db.Column(db.Integer, nullable=False)
     position = db.Column(db.Integer, unique=False)
 
-    def serialize_3(self):
+    def serialize(self):
         return {
         'vet_id':self.id,
         'user_id':self.user_id,
@@ -87,7 +87,7 @@ class Vaccines(db.Model):
     type_of_vaccine = db.Column(db.String(200))
     lote = db.Column(db.String(200))
 
-    def serialize_4(self):
+    def serialize(self):
         return {
         'vac_id':self.id,
         'pet_id':self.pet_id,
@@ -112,7 +112,7 @@ class Appointment(db.Model):
     payment_status = db.Column(db.Integer, nullable=False)
 
 
-    def serialize_5(self):
+    def serialize(self):
         return {
         'appointment_id':self.id,
         'date':self.date,
@@ -132,7 +132,7 @@ class Prescriptions(db.Model):
     image = db.Column(db.String(200))
     content = db.Column(db.String(200))
 
-    def serialize_6(self):
+    def serialize(self):
         return {
         'prescription_id':self.id,
         'appointment_id':self.appointment_id,

@@ -30,7 +30,7 @@ with app.app_context():
 @jwt_required()
 def home():
     users = Users.query.all()
-    users = list(map(lambda user: user.serialize_1(), users))
+    users = list(map(lambda user: user.serialize(), users))
     
     return jsonify({
         "data": users,
@@ -77,15 +77,25 @@ def login():
   login_email = request.json.get("email")
   password = request.json.get("password")
   user = Users.query.filter_by(email=login_email).first()
+  
+
   if user is not None:
    if bcrypt.check_password_hash(user.password, password):
    ## token = create_access_token(identity = login_email, expires_delta = expires_jwt)
-    token = create_access_token(identity = login_email)
-   
+    token = create_access_token(identity = user.id)
+
+    role = ""
+    role_auth = Veterinarians.query.filter_by(user_id = user.id).first()
+    if role_auth == None:
+       role = "user"
+    else:
+       role = "veterinarian"
+
     return jsonify({
       "token": token,
       "status": "success",
-      "user" : user.serialize_1(),
+      "role": role,
+      "user" : user.serialize(),
       "msg":"Login accepted"
     }) , 201
    else:
@@ -98,29 +108,12 @@ def login():
    }), 401
   
   
-@app.route("/vet/calendar/create-appointment", methods=["POST"])
-def createAppointment():
-  appointment = Appointment()
-
-  appointment.date = request.json.get("date")
-  appointment.time = request.json.get("time")
-  appointment.vet_id = request.json.get("vet_id")
-  appointment.user_id = request.json.get("user_id")
-  appointment.pet_id = request.json.get("pet_id")
-  appointment.comments = request.json.get("comments")
-  appointment.type_of_visit = request.json.get("type_of_visit")
-  appointment.payment_status = request.json.get("payment_status")
-
-  db.session.add(appointment)
-  db.session.commit()
-
-  return f"Appointment created", 201
 
 @app.route('/vet/calendar', methods=['GET'])
 def getAppointmentsPreview():
     appointments = Appointment.query.all()
-    appointments = list(map(lambda appointment: appointment.serialize_5(), appointments))
-    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day"]
+    appointments = list(map(lambda appointment: appointment.serialize(), appointments))
+    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day", "appointment_id"]
     values = []
     for i in range(len(appointments)):
       temp_dict = {}
@@ -139,6 +132,8 @@ def getAppointmentsPreview():
       temp_values.append(appointments[i]["time"]) 
 
       temp_values.append(appointments[i]["date"])
+
+      temp_values.append(appointments[i]["appointment_id"])
       
       for i in range(len(temp_values)):
          temp_dict[keys[i]] = temp_values[i]
@@ -183,7 +178,7 @@ def getClinicalRecordsPreview():
 @app.route('/vet/clinical-records', methods=['GET'])
 def getClinicalRecords():
     pets = Pets.query.all()
-    pets = list(map(lambda pet: pet.serialize_2(), pets))
+    pets = list(map(lambda pet: pet.serialize(), pets))
     keys = ["image", "name", "species", "age", "color", "owner"]
     values = []
     for i in range(len(pets)):
@@ -209,18 +204,129 @@ def getClinicalRecords():
         "status": 'success'
     }),200
 
+
+#CLINICAL RECORDS SPECIFIC
+
+@app.route('/vet/clinical-records-specific/<int:id>', methods = ["GET"])
+def getClinicalRecordsSpecific(id):
+  pet_specific = Pets.query.filter_by(id=id).first()
+  if pet_specific is not None:
+     return jsonify({pet_specific.serialize()}),200
+  else:
+     return jsonify({"error":"pet no found"}),404
+
+
+
+@app.route("/vet/calendar/create-appointment", methods=["GET", "POST"])
+def createAppointment():
+
+  if request.method == "GET":
+     veterinarians_query = Veterinarians.query.all()
+     veterinarians_query = list(map(lambda veterinarian: veterinarian.serialize(), veterinarians_query))
+     veterinarians = []
+     for i in range(len(veterinarians_query)):
+        temp_dict = {}
+        temp_dict["vet_id"] = veterinarians_query[i]["vet_id"]
+
+        vet_name = Users.query.filter_by(id = veterinarians_query[i]["user_id"]).first()
+        temp_dict["name"] = vet_name.name
+
+        veterinarians.append(temp_dict)
+      
+     print("vet: ", veterinarians)
+     pets_query = Pets.query.all()
+     pets_query = list(map(lambda pet: pet.serialize(), pets_query))
+     pets = []
+     for i in range(len(pets_query)):
+        temp_dict = {}
+        temp_dict["name"] = pets_query[i]["name"]
+        temp_dict["pet_id"] = pets_query[i]["pet_id"]
+        
+        pets.append(temp_dict)
+
+     return jsonify({
+        "vet_info": veterinarians,
+        "pet_info": pets}
+      ), 200
+
+  elif request.method == "POST":
+    appointment = Appointment()
+
+    appointment.date = request.json.get("date")
+    appointment.time = request.json.get("time")
+    appointment.vet_id = request.json.get("vet_id")
+    appointment.user_id = request.json.get("user_id")
+    appointment.pet_id = request.json.get("pet_id")
+    appointment.comments = request.json.get("comments")
+    appointment.type_of_visit = request.json.get("type_of_visit")
+    appointment.payment_status = request.json.get("payment_status")
+
+    db.session.add(appointment)
+    db.session.commit()
+
+    return f"Appointment created", 201
+
+
+@app.route('/user', methods=['GET'])
+@jwt_required()
+def getUserFrontPageData():
    
+   current_user_id = get_jwt_identity()
+   user = Users.query.filter_by(id=current_user_id).first()
+   pets_query = Pets.query.filter_by(user_id = user.id)
+   pets_query = list(map(lambda pet: pet.serialize(), pets_query))
+   appointments_query = Appointment.query.filter_by(user_id = user.id)
+   appointments_query = list(map(lambda appointment: appointment.serialize(), appointments_query))
+   
+   pets = []
+   for i in range(len(pets_query)):
+      temp_dict = {}
+
+      temp_dict["name"] = pets_query[i]["name"]
+      temp_dict["species"] = pets_query[i]["species"]
+      temp_dict["age"] = pets_query[i]["age"]
+      temp_dict["pet_id"] = pets_query[i]["pet_id"]
+
+      pets.append(temp_dict)
+      
+   user_data = {}
+   user_data["id"] = user.id
+   user_data["name"] = user.name  
+
+   appointments = []
+   for i in range(len(appointments_query)):
+      temp_dict = {}
+
+      temp_dict["date"] = appointments_query[i]["date"] 
+      temp_dict["time"] = appointments_query[i]["time"]
+
+      temp_vet = Veterinarians.query.filter_by(id=appointments_query[i]["vet_id"]).first()
+      temp_user = Users.query.filter_by(id=temp_vet.user_id).first()
+      temp_dict["veterinarian"] = temp_user.name
+
+      temp_dict["type_of_visit"] = appointments_query[i]["type_of_visit"]
+
+      temp_pet = Pets.query.filter_by(id = appointments_query[i]["pet_id"]).first()
+      temp_dict["species"] = temp_pet.species
+      temp_dict["pet_name"] = temp_pet.name
+
+      appointments.append(temp_dict)
+
+
+   return jsonify({
+      "pets_data": pets,
+      "user_data": user_data,
+      "appointment_data": appointments
+   }), 200
 
 #TEST ENDPOINTS BELOW
-
-
 
 @app.route('/postman/calendar', methods=['GET'])
 def getAppointmentsPostman():
     appointments = Appointment.query.all()
-    appointments = list(map(lambda appointment: appointment.serialize_5(), appointments))
+    appointments = list(map(lambda appointment: appointment.serialize(), appointments))
     pets = Pets.query.all()
-    pets = list(map(lambda pet: pet.serialize_2(), pets))
+    pets = list(map(lambda pet: pet.serialize(), pets))
 
     
     return jsonify({
@@ -244,7 +350,7 @@ def createVetPostman():
 @app.route('/postman/consult-veterinarians', methods=['GET'])
 def getVeterinariansPostman():
     veterinarians = Veterinarians.query.all()
-    veterinarians = list(map(lambda veterinarian: veterinarian.serialize_3(), veterinarians))
+    veterinarians = list(map(lambda veterinarian: veterinarian.serialize(), veterinarians))
     
     return jsonify({
         "data": veterinarians,
@@ -279,7 +385,7 @@ def createPetPostman():
 @app.route('/postman/consult-pets', methods=['GET'])
 def getPetsPostman():
     pets = Pets.query.all()
-    pets = list(map(lambda pet: pet.serialize_2(), pets))
+    pets = list(map(lambda pet: pet.serialize(), pets))
     
     return jsonify({
         "data": pets,
