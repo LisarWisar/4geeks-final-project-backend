@@ -179,12 +179,13 @@ def getClinicalRecordsPreview():
 def getClinicalRecords():
     pets = Pets.query.all()
     pets = list(map(lambda pet: pet.serialize(), pets))
-    keys = ["image", "name", "species", "age", "color", "owner"]
+    keys = ["pet_id", "image", "name", "species", "age", "color", "owner"]
     values = []
     for i in range(len(pets)):
       temp_dict = {}
       temp_values = []
 
+      temp_values.append(pets[i]["pet_id"])
       temp_values.append(pets[i]["image"])
       temp_values.append(pets[i]["name"])
       temp_values.append(pets[i]["species"])
