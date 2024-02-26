@@ -114,35 +114,68 @@ def login():
 def getAppointmentsPreview():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize(), appointments))
-    keys = ["veterinarian", "type_of_visit", "species", "breed", "time", "day", "appointment_id"]
     values = []
     for i in range(len(appointments)):
       temp_dict = {}
-      temp_values = []
 
       vet_temp = Veterinarians.query.filter_by(id=appointments[i]["vet_id"]).first()
       vet = Users.query.filter_by(id=vet_temp.user_id).first()
-      temp_values.append(vet.name)
+      temp_dict["vet_id"] = vet.id
+      temp_dict["veterinarian"] = vet.name
 
-      temp_values.append(appointments[i]["type_of_visit"])
+      temp_dict["type_of_visit"] = appointments[i]["type_of_visit"]
 
       pet = Pets.query.filter_by(id=appointments[i]["pet_id"]).first()
-      temp_values.append(pet.species)
-      temp_values.append(pet.breed)
+      temp_dict["species"] = pet.species
+      temp_dict["breed"] = pet.breed
 
-      temp_values.append(appointments[i]["time"]) 
+      temp_dict["time"] = appointments[i]["time"]
+      temp_dict["day"] = appointments[i]["date"]
+      temp_dict["appointment_id"] = appointments[i]["appointment_id"]
 
-      temp_values.append(appointments[i]["date"])
+      temp_dict["pet_id"] = appointments[i]["pet_id"]
+      pet = Pets.query.filter_by(id=appointments[i]["pet_id"]).first()
+      temp_dict["pet_name"] = pet.name
 
-      temp_values.append(appointments[i]["appointment_id"])
+      temp_dict["owner_id"] = appointments[i]["user_id"]
+      user = Users.query.filter_by(id=appointments[i]["user_id"]).first()
+      temp_dict["user_id"] = user.name
       
-      for i in range(len(temp_values)):
-         temp_dict[keys[i]] = temp_values[i]
-         
       values.append(temp_dict)
 
+    filter_data_vets = []
+    vets_filter_query = Veterinarians.query.all()
+    vets_filter_query = list(map(lambda vet: vet.serialize(), vets_filter_query))
+    for i in range(len(vets_filter_query)):
+       temp_dict = {}
+       temp_dict["vet_id"] = vets_filter_query[i]["vet_id"]
+       user_temp = Users.query.filter_by(id = vets_filter_query[i]["user_id"]).first()
+       temp_dict["vet_name"] = user_temp.name
+       filter_data_vets.append(temp_dict)
+
+    filter_data_pets = []
+    pets_filter_query = Pets.query.all()
+    pets_filter_query = list(map(lambda pet: pet.serialize(), pets_filter_query))
+    for i in range(len(pets_filter_query)):
+       temp_dict = {}
+       temp_dict["pet_id"] = pets_filter_query[i]["pet_id"]
+       temp_dict["name"] = pets_filter_query[i]["name"]
+       filter_data_pets.append(temp_dict)
+
+    filter_data_owners = []
+    owners_filter_query = Users.query.all()
+    owners_filter_query = list(map(lambda owner: owner.serialize(), owners_filter_query))
+    for i in range(len(owners_filter_query)):
+       temp_dict = {}
+       temp_dict["owner_id"] = owners_filter_query[i]["user_id"]
+       temp_dict["owner_name"] = owners_filter_query[i]["name"]
+       filter_data_owners.append(temp_dict)
+
     return jsonify({
-        "data": values,
+        "appointments_data": values,
+        "filter_data_vets": filter_data_vets,
+        "filter_data_pets": filter_data_pets,
+        "filter_data_owners": filter_data_owners,
         "status": 'success'
     }),200
 
