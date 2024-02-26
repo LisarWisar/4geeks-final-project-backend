@@ -82,7 +82,8 @@ def login():
   if user is not None:
    if bcrypt.check_password_hash(user.password, password):
    ## token = create_access_token(identity = login_email, expires_delta = expires_jwt)
-    token = create_access_token(identity = user.id)
+    expire = datetime.timedelta(days=3)
+    token = create_access_token(identity = user.id, expires_delta=expire)
 
     role = ""
     role_auth = Veterinarians.query.filter_by(user_id = user.id).first()
@@ -245,7 +246,7 @@ def getClinicalRecords():
 def getClinicalRecordsSpecific(id):
   pet_specific = Pets.query.filter_by(id=id).first()
   if pet_specific is not None:
-     return jsonify({pet_specific.serialize()}),200
+     return jsonify(pet_specific.serialize()),200
   else:
      return jsonify({"error":"pet no found"}),404
 
@@ -353,6 +354,23 @@ def getUserFrontPageData():
       "user_data": user_data,
       "appointments_data": appointments
    }), 200
+
+#USER PET LISTED
+
+
+@app.route('/user/pets', methods = ["GET"])
+@jwt_required()
+def getUserPetListed():
+  user_id = get_jwt_identity()
+  userpet_listed = Pets.query.filter_by(user_id=user_id).all()
+  userpet_listed = list(map(lambda pet: pet.serialize(), userpet_listed))
+  
+
+  if userpet_listed is not None:
+     return jsonify(userpet_listed),200
+  else:
+     return jsonify({"error":"pet no found"}),404
+
 
 #TEST ENDPOINTS BELOW
 
