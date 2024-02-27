@@ -439,29 +439,41 @@ def getVeterinariansPostman():
     }),200
 
 @app.route("/postman/create-pet", methods=["POST"])
+@jwt_required()
 def createPetPostman():
   pet = Pets()
-
-  pet.user_id = request.json.get("user_id")
+  current_user = get_jwt_identity()
+  pet.user_id = current_user
   pet.image = request.json.get("image")
   pet.name = request.json.get("name")
   pet.species = request.json.get("species")
-  pet.date_of_birth = request.json.get("date_of_birth")
+  pet.date_of_birth = request.json.get("dateOfBirth")
   pet.age = request.json.get("age")
   pet.color = request.json.get("color")
-  pet.sterilized = request.json.get("sterilized")
+  sterilized = request.json.get("sterilized")
+  if sterilized == "true":
+     pet.sterilized = True
+  elif sterilized == "false":
+     pet.sterilized = False
   pet.weight = request.json.get("weight") #IMPORTANT!! fix weigth spelling on database (also change usuario model to user)
   pet.height = request.json.get("height")
   pet.breed = request.json.get("breed")
   pet.allergies = request.json.get("allergies")
   pet.aditional_info = request.json.get("aditional_info")
   pet.doctor_notes = request.json.get("doctor_notes")
-  pet.status = request.json.get("status")
+  status = request.json.get("status")
+  if status == "true":
+     pet.status = True
+  elif status == "false":
+     pet.status = False
+
 
   db.session.add(pet)
   db.session.commit()
 
-  return f"Pet created", 201
+  return jsonify({
+     "msg" : "Pet created"
+     }), 201
 
 @app.route('/postman/consult-pets', methods=['GET'])
 def getPetsPostman():
