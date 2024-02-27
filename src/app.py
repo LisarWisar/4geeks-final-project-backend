@@ -299,20 +299,28 @@ def createAppointment():
 
   elif request.method == "POST":
     appointment = Appointment()
-
-    appointment.date = request.json.get("date")
-    appointment.time = request.json.get("time")
-    appointment.vet_id = request.json.get("vet_id")
-    appointment.user_id = request.json.get("user_id")
-    appointment.pet_id = request.json.get("pet_id")
-    appointment.comments = request.json.get("comments")
-    appointment.type_of_visit = request.json.get("type_of_visit")
-    appointment.payment_status = request.json.get("payment_status")
+    
+    day = request.json["appointmentData"].get("day")
+    month = request.json["appointmentData"].get("month")
+    year = request.json["appointmentData"].get("year")
+    date_ISO = str(year) + "-" + month + "-" + day
+    appointment.date = date_ISO
+    appointment.time = request.json["appointmentData"].get("time")
+    appointment.vet_id = request.json["appointmentData"].get("vetID")
+    pet_temp = Pets.query.filter_by(id = request.json["appointmentData"].get("petID")).first()
+    appointment.user_id = pet_temp.user_id
+    appointment.pet_id = request.json["appointmentData"].get("petID")
+    appointment.comments = request.json["appointmentData"].get("comments")
+    appointment.type_of_visit = request.json["appointmentData"].get("typeOfVisit")
+    appointment.payment_status = 0
 
     db.session.add(appointment)
     db.session.commit()
 
-    return f"Appointment created", 201
+    return jsonify({
+      "msg": "Appointment created",
+      "status": "ok"}
+    ), 201
 
 
 @app.route('/user', methods=['GET'])
