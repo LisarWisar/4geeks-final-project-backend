@@ -7,6 +7,7 @@ from flask_jwt_extended import JWTManager, create_access_token, get_jwt_identity
 from flask_bcrypt import Bcrypt 
 import datetime
 from datetime import date
+from operator import itemgetter
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///mibasededatos.db"
@@ -114,13 +115,16 @@ def login():
 def getAppointmentsPreview():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize(), appointments))
-    values = []
+    filter_data_appointments = []
     for i in range(len(appointments)):
       temp_dict = {}
+      weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      weekdays_abbreviated = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+      months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
 
       vet_temp = Veterinarians.query.filter_by(id=appointments[i]["vet_id"]).first()
       vet = Users.query.filter_by(id=vet_temp.user_id).first()
-      temp_dict["vet_id"] = vet.id
+      temp_dict["vet_id"] = vet_temp.id
       temp_dict["veterinarian"] = vet.name
 
       temp_dict["type_of_visit"] = appointments[i]["type_of_visit"]
@@ -130,7 +134,13 @@ def getAppointmentsPreview():
       temp_dict["breed"] = pet.breed
 
       temp_dict["time"] = appointments[i]["time"]
-      temp_dict["day"] = appointments[i]["date"]
+      temp_dict["full_date"] = appointments[i]["date"]
+      temp_dict["date_day"] = date.fromisoformat(appointments[i]["date"]).day
+      temp_dict["date_month"] = date.fromisoformat(appointments[i]["date"]).month
+      temp_dict["date_year"] = date.fromisoformat(appointments[i]["date"]).year
+      temp_dict["weekday"] = weekdays[date.fromisoformat(appointments[i]["date"]).isoweekday()]
+      temp_dict["weekday_abbreviated"] = weekdays_abbreviated[date.fromisoformat(appointments[i]["date"]).isoweekday()]
+      temp_dict["month_name"] = months[date.fromisoformat(appointments[i]["date"]).month-1]
       temp_dict["appointment_id"] = appointments[i]["appointment_id"]
 
       temp_dict["pet_id"] = appointments[i]["pet_id"]
@@ -139,9 +149,12 @@ def getAppointmentsPreview():
 
       temp_dict["owner_id"] = appointments[i]["user_id"]
       user = Users.query.filter_by(id=appointments[i]["user_id"]).first()
-      temp_dict["user_id"] = user.name
+      temp_dict["owner_name"] = user.name
+      temp_dict["frontend_element_type"] = "card"
       
-      values.append(temp_dict)
+      filter_data_appointments.append(temp_dict) 
+
+    filter_data_appointments = sorted(filter_data_appointments, key=itemgetter("full_date"))
 
     filter_data_vets = []
     vets_filter_query = Veterinarians.query.all()
@@ -159,7 +172,7 @@ def getAppointmentsPreview():
     for i in range(len(pets_filter_query)):
        temp_dict = {}
        temp_dict["pet_id"] = pets_filter_query[i]["pet_id"]
-       temp_dict["name"] = pets_filter_query[i]["name"]
+       temp_dict["pet_name"] = pets_filter_query[i]["name"]
        filter_data_pets.append(temp_dict)
 
     filter_data_owners = []
@@ -172,7 +185,7 @@ def getAppointmentsPreview():
        filter_data_owners.append(temp_dict)
 
     return jsonify({
-        "appointments_data": values,
+        "appointments_data": filter_data_appointments,
         "filter_data_vets": filter_data_vets,
         "filter_data_pets": filter_data_pets,
         "filter_data_owners": filter_data_owners,
@@ -386,6 +399,13 @@ def getAppointmentsPostman():
         "data": pets,
         "status": 'success'
     }),200
+
+@app.route('/postman/update-appointment', methods=['PUT'])
+def updateAppointmentPostman():
+   appointment = Appointment.query.get(request.json.get("app_id"))
+   appointment.date = request.json.get("date")
+   db.session.commit()
+   return jsonify("Appointment updated"), 200
 
 @app.route("/postman/create-vet", methods=["POST"])
 def createVetPostman():
