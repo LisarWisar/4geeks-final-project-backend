@@ -111,9 +111,12 @@ def login():
   
   
 
-@app.route('/vet/calendar', methods=['GET'])
+@app.route('/user/calendar', methods=['GET'])
+@jwt_required()
 def getAppointmentsPreview():
-    appointments = Appointment.query.all()
+    
+    current_user = get_jwt_identity()
+    appointments = Appointment.query.filter_by(user_id = current_user)
     appointments = list(map(lambda appointment: appointment.serialize(), appointments))
     filter_data_appointments = []
     for i in range(len(appointments)):
@@ -175,20 +178,10 @@ def getAppointmentsPreview():
        temp_dict["pet_name"] = pets_filter_query[i]["name"]
        filter_data_pets.append(temp_dict)
 
-    filter_data_owners = []
-    owners_filter_query = Users.query.all()
-    owners_filter_query = list(map(lambda owner: owner.serialize(), owners_filter_query))
-    for i in range(len(owners_filter_query)):
-       temp_dict = {}
-       temp_dict["owner_id"] = owners_filter_query[i]["user_id"]
-       temp_dict["owner_name"] = owners_filter_query[i]["name"]
-       filter_data_owners.append(temp_dict)
-
     return jsonify({
         "appointments_data": filter_data_appointments,
         "filter_data_vets": filter_data_vets,
         "filter_data_pets": filter_data_pets,
-        "filter_data_owners": filter_data_owners,
         "status": 'success'
     }),200
 
