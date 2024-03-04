@@ -138,8 +138,8 @@ def getAppointmentsPreview():
       temp_dict["date_day"] = date.fromisoformat(appointments[i]["date"]).day
       temp_dict["date_month"] = date.fromisoformat(appointments[i]["date"]).month
       temp_dict["date_year"] = date.fromisoformat(appointments[i]["date"]).year
-      temp_dict["weekday"] = weekdays[date.fromisoformat(appointments[i]["date"]).isoweekday()]
-      temp_dict["weekday_abbreviated"] = weekdays_abbreviated[date.fromisoformat(appointments[i]["date"]).isoweekday()]
+      temp_dict["weekday"] = weekdays[date.fromisoformat(appointments[i]["date"]).isoweekday()-1]
+      temp_dict["weekday_abbreviated"] = weekdays_abbreviated[date.fromisoformat(appointments[i]["date"]).isoweekday()-1]
       temp_dict["month_name"] = months[date.fromisoformat(appointments[i]["date"]).month-1]
       temp_dict["appointment_id"] = appointments[i]["appointment_id"]
 
@@ -226,29 +226,44 @@ def getClinicalRecordsPreview():
 def getClinicalRecords():
     pets = Pets.query.all()
     pets = list(map(lambda pet: pet.serialize(), pets))
-    keys = ["pet_id", "image", "name", "species", "age", "color", "owner"]
-    values = []
+    clinical_records = []
+    filter_data_pets = []
+
     for i in range(len(pets)):
       temp_dict = {}
-      temp_values = []
+      temp_dict_filter = {}
 
-      temp_values.append(pets[i]["pet_id"])
-      temp_values.append(pets[i]["image"])
-      temp_values.append(pets[i]["name"])
-      temp_values.append(pets[i]["species"])
-      temp_values.append(pets[i]["age"])
-      temp_values.append(pets[i]["color"])
+      temp_dict["pet_id"] = pets[i]["pet_id"]
+      temp_dict["image"] = pets[i]["image"]
+      temp_dict["name"] = pets[i]["name"]
+      temp_dict["species"] = pets[i]["species"]
+      temp_dict["age"] = pets[i]["age"]
+      temp_dict["color"] = pets[i]["color"]
 
       owner = Users.query.filter_by(id=pets[i]["user_id"]).first()
-      temp_values.append(owner.name)
-      
-      for i in range(len(temp_values)):
-         temp_dict[keys[i]] = temp_values[i]
+      temp_dict["owner"] = owner.name
+      temp_dict["owner_id"] = owner.id
          
-      values.append(temp_dict)
+      clinical_records.append(temp_dict)
+
+      temp_dict_filter["pet_id"] = pets[i]["pet_id"]
+      temp_dict_filter["pet_name"] = pets[i]["name"]
+
+      filter_data_pets.append(temp_dict_filter)
+
+    filter_data_owners = []
+    owners_filter_query = Users.query.all()
+    owners_filter_query = list(map(lambda owner: owner.serialize(), owners_filter_query))
+    for i in range(len(owners_filter_query)):
+       temp_dict = {}
+       temp_dict["owner_id"] = owners_filter_query[i]["user_id"]
+       temp_dict["owner_name"] = owners_filter_query[i]["name"]
+       filter_data_owners.append(temp_dict)
 
     return jsonify({
-        "data": values,
+        "clinical_records": clinical_records,
+        "filter_data_owners": filter_data_owners,
+        "filter_data_pets": filter_data_pets,
         "status": 'success'
     }),200
 
@@ -437,6 +452,14 @@ def getVeterinariansPostman():
         "data": veterinarians,
         "status": 'success'
     }),200
+
+@app.route('/postman/detele-appointments', methods=['DELETE'])
+def deteleteAppointment():
+   appointment = Appointment.query.filter_by(id=request.json.get("app_id")).first()
+   db.session.delete(appointment)
+   db.session.commit()
+   return f"Appointment deleted", 201
+
 
 @app.route("/postman/create-pet", methods=["POST"])
 @jwt_required()
