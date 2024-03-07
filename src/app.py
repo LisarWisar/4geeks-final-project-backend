@@ -112,7 +112,7 @@ def login():
   
 
 @app.route('/vet/calendar', methods=['GET'])
-def getAppointmentsPreview():
+def vetGetAppointments():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize(), appointments))
     filter_data_appointments = []
@@ -189,6 +189,80 @@ def getAppointmentsPreview():
         "filter_data_vets": filter_data_vets,
         "filter_data_pets": filter_data_pets,
         "filter_data_owners": filter_data_owners,
+        "status": 'success'
+    }),200
+
+@app.route('/user/calendar', methods=['GET'])
+@jwt_required()
+def userGetAppointments():
+    
+    current_user = get_jwt_identity()
+    appointments = Appointment.query.filter_by(user_id = current_user)
+    appointments = list(map(lambda appointment: appointment.serialize(), appointments))
+    filter_data_appointments = []
+    for i in range(len(appointments)):
+      temp_dict = {}
+      weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+      weekdays_abbreviated = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+      months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+
+      vet_temp = Veterinarians.query.filter_by(id=appointments[i]["vet_id"]).first()
+      vet = Users.query.filter_by(id=vet_temp.user_id).first()
+      temp_dict["vet_id"] = vet_temp.id
+      temp_dict["veterinarian"] = vet.name
+
+      temp_dict["type_of_visit"] = appointments[i]["type_of_visit"]
+
+      pet = Pets.query.filter_by(id=appointments[i]["pet_id"]).first()
+      temp_dict["species"] = pet.species
+      temp_dict["breed"] = pet.breed
+
+      temp_dict["time"] = appointments[i]["time"]
+      temp_dict["full_date"] = appointments[i]["date"]
+      temp_dict["date_day"] = date.fromisoformat(appointments[i]["date"]).day
+      temp_dict["date_month"] = date.fromisoformat(appointments[i]["date"]).month
+      temp_dict["date_year"] = date.fromisoformat(appointments[i]["date"]).year
+      temp_dict["weekday"] = weekdays[date.fromisoformat(appointments[i]["date"]).isoweekday()-1]
+      temp_dict["weekday_abbreviated"] = weekdays_abbreviated[date.fromisoformat(appointments[i]["date"]).isoweekday()-1]
+      temp_dict["month_name"] = months[date.fromisoformat(appointments[i]["date"]).month-1]
+      temp_dict["appointment_id"] = appointments[i]["appointment_id"]
+
+      temp_dict["pet_id"] = appointments[i]["pet_id"]
+      pet = Pets.query.filter_by(id=appointments[i]["pet_id"]).first()
+      temp_dict["pet_name"] = pet.name
+
+      temp_dict["owner_id"] = appointments[i]["user_id"]
+      user = Users.query.filter_by(id=appointments[i]["user_id"]).first()
+      temp_dict["owner_name"] = user.name
+      temp_dict["frontend_element_type"] = "card"
+      
+      filter_data_appointments.append(temp_dict) 
+
+    filter_data_appointments = sorted(filter_data_appointments, key=itemgetter("full_date"))
+
+    filter_data_vets = []
+    vets_filter_query = Veterinarians.query.all()
+    vets_filter_query = list(map(lambda vet: vet.serialize(), vets_filter_query))
+    for i in range(len(vets_filter_query)):
+       temp_dict = {}
+       temp_dict["vet_id"] = vets_filter_query[i]["vet_id"]
+       user_temp = Users.query.filter_by(id = vets_filter_query[i]["user_id"]).first()
+       temp_dict["vet_name"] = user_temp.name
+       filter_data_vets.append(temp_dict)
+
+    filter_data_pets = []
+    pets_filter_query = Pets.query.all()
+    pets_filter_query = list(map(lambda pet: pet.serialize(), pets_filter_query))
+    for i in range(len(pets_filter_query)):
+       temp_dict = {}
+       temp_dict["pet_id"] = pets_filter_query[i]["pet_id"]
+       temp_dict["pet_name"] = pets_filter_query[i]["name"]
+       filter_data_pets.append(temp_dict)
+
+    return jsonify({
+        "appointments_data": filter_data_appointments,
+        "filter_data_vets": filter_data_vets,
+        "filter_data_pets": filter_data_pets,
         "status": 'success'
     }),200
 
