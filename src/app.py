@@ -112,6 +112,7 @@ def login():
   
 
 @app.route('/vet/calendar', methods=['GET'])
+@jwt_required()
 def vetGetAppointments():
     appointments = Appointment.query.all()
     appointments = list(map(lambda appointment: appointment.serialize(), appointments))
@@ -268,6 +269,7 @@ def userGetAppointments():
 
 
 @app.route('/vet/clinical-record-preview', methods=['GET'])
+@jwt_required()
 def getClinicalRecordsPreview():
    pet = Pets.query.order_by(Pets.id.desc()).first()
    owner = Users.query.filter_by(id=pet.user_id).first()
@@ -297,6 +299,7 @@ def getClinicalRecordsPreview():
     }),200
 
 @app.route('/vet/clinical-records', methods=['GET'])
+@jwt_required()
 def getClinicalRecords():
     pets = Pets.query.all()
     pets = list(map(lambda pet: pet.serialize(), pets))
@@ -345,6 +348,7 @@ def getClinicalRecords():
 #CLINICAL RECORDS SPECIFIC
 
 @app.route('/vet/clinical-records-specific/<int:id>', methods = ["GET"])
+@jwt_required()
 def getClinicalRecordsSpecific(id):
   pet_specific = Pets.query.filter_by(id=id).first()
   if pet_specific is not None:
@@ -355,6 +359,7 @@ def getClinicalRecordsSpecific(id):
 
 
 @app.route("/vet/calendar/create-appointment", methods=["GET", "POST"])
+@jwt_required()
 def createAppointment():
 
   if request.method == "GET":
